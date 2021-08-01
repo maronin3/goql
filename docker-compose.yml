@@ -1,0 +1,63 @@
+version: "3.9"
+networks:
+  nw1:
+    name: 1_host
+  nw2:
+    name: 2_eth2
+
+secrets:
+    db_user:
+        file: ./deploy/secret/db_user.txt
+    db_pass:
+        file: ./deploy/secret/db_pass.txt
+        
+services:
+    mongodb:
+        image: mongo
+        container_name: goql_mogodb
+        restart: always
+        ports:
+            - "27017:27017"
+        secrets:
+            - db_user
+            - db_pass
+        environment: 
+            MONGO_INITDB_ROOT_USERNAME: /run/secrets/db_user
+            MONGO_INITDB_ROOT_PASSWORD: /run/secrets/db_pass
+        volumes: .db-data/mongodb:/var/lib/mongodb/data
+        networks:
+            - nw1
+    nginx:
+        image: nginx:1.19.8
+        restart: always
+        container_name: goql_nginx
+        volumes:
+            - ./deploy/conf/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./deploy/certs:/etc/nginx/certs:ro
+        depends_on: 
+            - mongodb
+            - goql
+        ports:
+            - "80:80"
+                # non-ssl, redirect to 443
+            - "443:443"
+                # ssl
+            - "3000:3000"
+                # goql
+            - "27017:27017"
+                # mongodb
+        networks:
+            - nw1
+            - nw2
+    goql:
+        image: goql:{APIVERSION-latest}
+        container_name: goql
+        restart: always
+        ports: 
+            - "3000:3000"
+        depends_on: 
+            - mongodb
+        env_file: 
+            - ./deploy/env/goql.dontenv
+        networks:
+            - nw1

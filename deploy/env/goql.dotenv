@@ -1,0 +1,4 @@
+ENV=goql
+PORT=3000
+GIN_MODE=debug
+MONGO_URI=mongodb://localhost:27017
